@@ -7,8 +7,9 @@ import (
 	"strconv"
 )
 
+// Parser is for PDF parse. It is the only API which can be call from outside
 type Parser struct {
-	XrefList       XrefList
+	xrefList       xrefList
 	xrefReg        *regexp.Regexp
 	tralierSizeReg *regexp.Regexp
 	tralierRootReg *regexp.Regexp
@@ -16,7 +17,9 @@ type Parser struct {
 	tralierIDReg   *regexp.Regexp
 }
 
+// NewParser return Parser pointer
 func NewParser() *Parser {
+	// compile regexp once for performance
 	return &Parser{
 		xrefReg:        regexp.MustCompile(`(\d{10})\s(\d{5})\s([f|n])`),
 		tralierSizeReg: regexp.MustCompile(`Size\s+(\d+)`),
@@ -26,6 +29,7 @@ func NewParser() *Parser {
 	}
 }
 
+// checkWhiteSpace check if data is white space which is described in PDF spec
 func (p *Parser) checkWhiteSpace(i byte) bool {
 	// 0x00 null (NUL), 0x09 horizontal tab (HT), 0x0A line feed (LF),
 	// 0x0C form feed (FF), 0x0D carriage return (CR), 0x20 space (SP)
@@ -37,7 +41,8 @@ func (p *Parser) checkWhiteSpace(i byte) bool {
 	return false
 }
 
-func (p *Parser) GetStartXref(file *os.File) (int, error) {
+// parseStartXref return xref offset
+func (p *Parser) getStartXref(file *os.File) (int, error) {
 	state, err := file.Stat()
 	if err != nil {
 		return 0, err
@@ -75,7 +80,8 @@ func (p *Parser) GetStartXref(file *os.File) (int, error) {
 	return xrefOffset, nil
 }
 
-func (p *Parser) GetXref(file *os.File, offset int) error {
+// parseXref parses xref into attribues Xref and Trailer
+func (p *Parser) parseXref(file *os.File, offset int) error {
 	buf := make([]byte, 2*1024) // 2M
 	file.ReadAt(buf, int64(offset))
 	tmpOffset := 4 // len("xref")
@@ -94,7 +100,7 @@ func (p *Parser) GetXref(file *os.File, offset int) error {
 	if err != nil {
 		return err
 	}
-	p.XrefList.Start = uint16(val)
+	p.xrefList.start = uint16(val)
 
 	tmpString = ""
 	for {
@@ -109,34 +115,34 @@ func (p *Parser) GetXref(file *os.File, offset int) error {
 	if err != nil {
 		return err
 	}
-	p.XrefList.Num = uint32(val)
+	p.xrefList.num = uint32(val)
 
-	xrefList := make([]Xref, val)
+	xrefList := make([]xref, val)
 	matches := p.xrefReg.FindAllStringSubmatch(string(buf), -1)
 	for i := 0; i < val; i++ {
 		matchOffset, err := strconv.Atoi(matches[i][1])
 		if err != nil {
 			return err
 		}
-		xrefList[i].Offset = uint64(matchOffset)
+		xrefList[i].offset = uint64(matchOffset)
 		matchGenNum, err := strconv.Atoi(matches[i][2])
 		if err != nil {
 			return err
 		}
-		xrefList[i].GenNum = uint16(matchGenNum)
-		xrefList[i].Entry = byte(matches[i][3][0])
+		xrefList[i].genNum = uint16(matchGenNum)
+		xrefList[i].entry = byte(matches[i][3][0])
 	}
-	p.XrefList.List = xrefList
+	p.xrefList.list = xrefList
 
 	// tralier
 	size := p.tralierSizeReg.FindStringSubmatch(string(buf))
-	p.XrefList.Trailer.Size = size[1]
+	p.xrefList.trailer.size = size[1]
 	root := p.tralierRootReg.FindStringSubmatch(string(buf))
-	p.XrefList.Trailer.Root = root[1] + "_" + root[2]
+	p.xrefList.trailer.root = root[1] + "_" + root[2]
 	info := p.tralierInfoReg.FindStringSubmatch(string(buf))
-	p.XrefList.Trailer.Info = info[1] + "_" + info[2]
+	p.xrefList.trailer.info = info[1] + "_" + info[2]
 	id := p.tralierIDReg.FindStringSubmatch(string(buf))
-	p.XrefList.Trailer.ID[0] = id[1]
-	p.XrefList.Trailer.ID[1] = id[2]
+	p.xrefList.trailer.id[0] = id[1]
+	p.xrefList.trailer.id[1] = id[2]
 	return nil
 }

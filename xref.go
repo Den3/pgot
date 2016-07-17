@@ -1,25 +1,25 @@
 package pgot
 
-type Xref struct {
-	Offset uint64
+type xref struct {
+	offset uint64
 
 	//Generation Number
-	GenNum uint16
+	genNum uint16
 
 	// n for an in-use entry or f for a free entry
-	Entry byte
+	entry byte
 }
 
-type Trailer struct {
-	Size string
-	Root string
-	Info string
-	ID   [2]string
+type trailer struct {
+	size string
+	root string
+	info string
+	id   [2]string
 }
 
-type XrefList struct {
-	Start   uint16
-	Num     uint32
-	List    []Xref
-	Trailer Trailer
+type xrefList struct {
+	start   uint16
+	num     uint32
+	list    []xref
+	trailer trailer
 }
