@@ -2,7 +2,6 @@ package pgot
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -139,6 +138,5 @@ func (p *Parser) GetXref(file *os.File, offset int) error {
 	id := p.tralierIDReg.FindStringSubmatch(string(buf))
 	p.XrefList.Trailer.ID[0] = id[1]
 	p.XrefList.Trailer.ID[1] = id[2]
-	fmt.Println(p.XrefList)
 	return nil
 }
